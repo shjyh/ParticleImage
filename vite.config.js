@@ -20,6 +20,7 @@ export default defineConfig({
     }
   ],
   build: {
+    minify: 'terser',
     lib: {
       entry: 'src/ParticleImage.js',
       name: 'ParticleImage',
