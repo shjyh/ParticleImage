@@ -12,6 +12,43 @@ import renderFragSource from './shaders/render.frag.glsl?raw';
 // Import worker
 import ParticleWorker from './worker.js?worker&inline';
 
+class LRUCache {
+    constructor(limit = 10, onDispose = null) {
+        this.limit = limit;
+        this.onDispose = onDispose;
+        this.cache = new Map();
+    }
+
+    get(key) {
+        if (!this.cache.has(key)) return null;
+        const val = this.cache.get(key);
+        this.cache.delete(key);
+        this.cache.set(key, val);
+        return val;
+    }
+
+    set(key, val) {
+        if (this.cache.has(key)) {
+            this.cache.delete(key);
+        } else if (this.cache.size >= this.limit) {
+            const firstKey = this.cache.keys().next().value;
+            const obsolete = this.cache.get(firstKey);
+            if (this.onDispose) this.onDispose(obsolete);
+            this.cache.delete(firstKey);
+        }
+        this.cache.set(key, val);
+    }
+
+    clear() {
+        if (this.onDispose) {
+            for (let val of this.cache.values()) {
+                this.onDispose(val);
+            }
+        }
+        this.cache.clear();
+    }
+}
+
 class ParticleManager {
     constructor(parent) {
         this.parent = parent;
@@ -65,7 +102,7 @@ class ParticleManager {
                 uMousePos: { value: new THREE.Vector2(0, 0) },
                 uTime: { value: 0 },
                 uDeltaTime: { value: 0 },
-                uIsHovering: { value: 0 },
+                uProgress: { value: 0 },
                 uSize: { value: this.size }
             },
             vertexShader: `
@@ -105,11 +142,9 @@ class ParticleManager {
                 uPosition: { value: this.posTex },
                 uColorTex: { value: this.colorNearestTex },
                 uTime: { value: 0 },
-                uColor1: { value: new THREE.Color(this.parent.colorControls.color1) },
-                uColor2: { value: new THREE.Color(this.parent.colorControls.color2) },
-                uColor3: { value: new THREE.Color(this.parent.colorControls.color3) },
+                uColor: { value: new THREE.Color(this.parent.color) },
                 uAlpha: { value: 1 },
-                uIsHovering: { value: 0 },
+                uProgress: { value: 0 },
                 uPulseProgress: { value: 0 },
                 uMousePos: { value: new THREE.Vector2(0, 0) },
                 uRez: { value: new THREE.Vector2(this.renderer.domElement.width, this.renderer.domElement.height) },
@@ -204,7 +239,7 @@ class ParticleManager {
         this.simMaterial.uniforms.uPosition.value = this.everRendered ? this.rt1.texture : this.posTex;
         this.simMaterial.uniforms.uTime.value = time;
         this.simMaterial.uniforms.uDeltaTime.value = deltaTime;
-        this.simMaterial.uniforms.uIsHovering.value = this.parent.hoverProgress;
+        this.simMaterial.uniforms.uProgress.value = this.parent.progress;
 
         this.renderer.setRenderTarget(this.rt2);
         this.renderer.render(this.simScene, this.simCamera);
@@ -212,7 +247,7 @@ class ParticleManager {
 
         this.renderMaterial.uniforms.uPosition.value = this.rt2.texture;
         this.renderMaterial.uniforms.uTime.value = time;
-        this.renderMaterial.uniforms.uIsHovering.value = this.parent.hoverProgress;
+        this.renderMaterial.uniforms.uProgress.value = this.parent.progress;
 
         // Swap buffers
         let temp = this.rt1;
@@ -255,15 +290,18 @@ export class ParticleImage {
         this.particlesScale = options.particlesScale || 0.5;
         this.density = options.density || 150;
         this.cameraZoom = options.cameraZoom || 3.5;
-        this.colorControls = {
-            color1: options.color1 || "#aecbfa",
-            color2: options.color2 || "#aecbfa",
-            color3: options.color3 || "#93bbfc"
-        };
+        this.color = options.color || (this.theme === "dark" ? "#aecbfa" : "#121212");
 
         this.pixelRatio = window.devicePixelRatio;
-        this.hoverProgress = 0;
+        this.duration = options.duration || 0.6;
+        this.progress = 0;
         this.clock = new THREE.Clock();
+
+        // Initialize LRU Cache for processed image textures
+        this.lru = new LRUCache(10, (data) => {
+            if (data.posTex) data.posTex.dispose();
+            if (data.colorTex) data.colorTex.dispose();
+        });
 
         this.initThree();
         this.manager = new ParticleManager(this);
@@ -340,19 +378,34 @@ export class ParticleImage {
 
     async render(image) {
         if (!image) return;
-        const imageData = await this.getImageData(image);
-        const { posTex, colorTex } = await this.manager.processImage(imageData);
+
+        // Check LRU cache first
+        const cached = this.lru.get(image);
+        let posTex, colorTex;
+
+        if (cached) {
+            posTex = cached.posTex;
+            colorTex = cached.colorTex;
+        } else {
+            const imageData = await this.getImageData(image);
+            const processed = await this.manager.processImage(imageData);
+            posTex = processed.posTex;
+            colorTex = processed.colorTex;
+
+            // Save to cache
+            this.lru.set(image, { posTex, colorTex });
+        }
 
         this.manager.posNearestTex = posTex;
         this.manager.colorNearestTex = colorTex;
         this.manager.simMaterial.uniforms.uPosNearest.value = posTex;
         this.manager.renderMaterial.uniforms.uColorTex.value = colorTex;
 
-        gsap.to(this, { hoverProgress: 1, duration: 0.6, ease: "power3.inOut" });
+        gsap.to(this, { progress: 1, duration: this.duration, ease: "power3.inOut" });
     }
 
     scatter() {
-        gsap.to(this, { hoverProgress: 0, duration: 0.6, ease: "power3.inOut" });
+        gsap.to(this, { progress: 0, duration: this.duration, ease: "power3.inOut" });
     }
 
     animate() {
@@ -373,6 +426,7 @@ export class ParticleImage {
 
     destroy() {
         window.removeEventListener('resize', this.onResize);
+        this.lru.clear();
         this.manager.destroy();
         this.renderer.dispose();
         this.renderer = null;

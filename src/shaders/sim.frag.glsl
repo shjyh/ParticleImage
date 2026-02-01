@@ -7,7 +7,7 @@ uniform sampler2D uPosNearest;
 uniform vec2 uMousePos;
 uniform float uTime;
 uniform float uDeltaTime;
-uniform float uIsHovering;
+uniform float uProgress;
 uniform float uSize;
 
 vec2 hash( vec2 p ){
@@ -33,12 +33,12 @@ void main() {
     vec2 disp = vec2(0., 0.);
     vec2 pos = pFrame.xy;
 
-    vec2 targetPos = mix(refPos, nearestPos, uIsHovering);
+    vec2 targetPos = mix(refPos, nearestPos, uProgress);
 
     vec2 direction = normalize(targetPos - pos);
     float dist = length(targetPos - pos);
     
-    float moveSpeed = mix(0.015, 0.03, uIsHovering); 
+    float moveSpeed = mix(0.015, 0.03, uProgress); 
     float distStrength = smoothstep(0.0, 0.2, dist);
     
     if(dist > 0.002){
@@ -52,7 +52,7 @@ void main() {
     }
 
     float targetScale = smoothstep(.01, 0.5, lifeTime) - smoothstep(0.5, 1., lifeTime/lifeEnd);
-    targetScale += smoothstep(0.1, 0., smoothstep(0.001, .1, dist)) * 1.5 * uIsHovering;
+    targetScale += smoothstep(0.1, 0., smoothstep(0.001, .1, dist)) * 1.5 * uProgress;
 
     float scaleDiff = targetScale - scale;
     scaleDiff *= .1;
@@ -63,7 +63,7 @@ void main() {
     vec2 diff = finalPos - pFrame.xy;
     diff *= .2;
 
-    velocity = smoothstep(distRadius, .001, dist) * uIsHovering;
+    velocity = smoothstep(distRadius, .001, dist) * uProgress;
 
     vec4 frame = vec4(pFrame.xy + diff, scale, velocity);
     gl_FragColor = frame;

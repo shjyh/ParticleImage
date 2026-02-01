@@ -7,7 +7,7 @@ uniform float uTime;
 uniform float uParticleScale;
 uniform float uPixelRatio;
 uniform int uColorScheme;
-uniform float uIsHovering;
+uniform float uProgress;
 uniform float uPulseProgress;
 
 varying vec4 vSeeds;
@@ -38,7 +38,7 @@ void main() {
     pos.xy *= 1. + (t * .02);
 
     float dist = smoothstep(0., 0.9, pos.w);
-    dist = mix(0., dist, uIsHovering);
+    dist = mix(0., dist, uProgress);
 
     pos.y += noiseY * 0.005 * dist;
     pos.x += noiseX * 0.005 * dist;

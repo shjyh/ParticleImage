@@ -8,9 +8,7 @@ varying float vScale;
 varying float vVelocity;
 varying vec2 vUv;
 
-uniform vec3 uColor1;
-uniform vec3 uColor2;
-uniform vec3 uColor3;
+uniform vec3 uColor;
 
 uniform vec2 uMousePos;
 uniform vec2 uRez;
@@ -18,7 +16,7 @@ uniform vec2 uRez;
 uniform float uAlpha;
 uniform float uTime;
 uniform sampler2D uColorTex;
-uniform float uIsHovering;
+uniform float uProgress;
 
 uniform int uColorScheme;
 
@@ -57,12 +55,11 @@ void main() {
     tuv.y *= 1./ratio;
     tuv += .5;
 
-    float h = 0.8; 
-    float progress = vVelocity;
-    vec3 gradientColor = mix(mix(uColor1, uColor2, progress/h), mix(uColor2, uColor3, (progress - h)/(1.0 - h)), step(h, progress));
+    float h = 0.5; 
+    vec3 gradientColor = mix(uColor, uColor * 0.8, vVelocity);
     
     vec3 imgColor = texture2D(uColorTex, vUv).rgb;
-    vec3 color = mix(gradientColor, imgColor, uIsHovering);
+    vec3 color = mix(gradientColor, imgColor, uProgress);
 
     float dist = sqrt(dot(uv, uv));
 
@@ -82,7 +79,9 @@ void main() {
     }
 
     color = clamp(color, 0., 1.);
-    vec3 finalCol = mix(color, color * clamp(vVelocity, 0., 1.), float(uColorScheme) * (1.0 - uIsHovering));
+    // For light mode, we want the particles to be darker when scattered
+    // To improve dot visibility in light mode, we use uColor directly when not hovering
+    vec3 finalCol = mix(color, uColor, float(uColorScheme) * (1.0 - uProgress));
     
     gl_FragColor = vec4(finalCol, clamp(a, 0., 1.));
 
