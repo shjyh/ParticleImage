@@ -2,7 +2,9 @@
 
 基于 Three.js 开发的高性能 3D 粒子变形特效库。支持将粒子平滑地聚合形成特定的图像（支持 路径、Base64 或 SVG 源码），并带有高性能的着色器动画效果。
 
-video.mp4
+**[English](./README.md) | 中文**
+
+https://github.com/user-attachments/assets/aeac5d4f-d23a-4751-bc38-550211f4c67e
 
 ## 安装
 
