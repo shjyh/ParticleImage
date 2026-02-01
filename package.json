@@ -3,7 +3,23 @@
   "version": "0.1.0",
   "type": "module",
   "description": "Particle image effect using three.js",
-  "author": "",
+  "keywords": [
+    "threejs",
+    "particles",
+    "morphing",
+    "3d",
+    "webgl",
+    "animation",
+    "gsap",
+    "particle-effect",
+    "image-to-particles",
+    "canvas",
+    "glsl",
+    "shaders",
+    "gpgpu",
+    "vfx"
+  ],
+  "author": "shjyh",
   "license": "MIT",
   "main": "dist/particle-image.es.js",
   "module": "dist/particle-image.es.js",
@@ -19,8 +35,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "prepublishOnly": "echo 'Ready to publish'"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shjyh/ParticleImage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shjyh/ParticleImage/issues"
+  },
+  "homepage": "https://github.com/shjyh/ParticleImage#readme",
   "dependencies": {
     "gsap": "^3.14.2",
     "poisson-disk-sampling": "^2.3.1",

@@ -1,0 +1,34 @@
+# Development files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+vite.config.js
+
+# Git
+.git/
+.gitignore
+
+# Testing
+coverage/
+*.test.js
+*.spec.js
+
+# Documentation (except README.md which is included)
+docs/
+examples/
+
+# demo
+demo_image/
+index.html
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+
+# Misc
+.DS_Store
+Thumbs.db
+.env
+.env.local
