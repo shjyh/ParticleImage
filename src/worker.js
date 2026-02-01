@@ -1,6 +1,8 @@
 
 self.onmessage = function (e) {
-    const { imageData, pointsBase, density } = e.data;
+    const { imageData, pointsBase, density, width, height } = e.data;
+    const halfW = width / 2;
+    const halfH = height / 2;
 
     const targetPoints = [];
     const step = 2;
@@ -28,35 +30,49 @@ self.onmessage = function (e) {
     }
 
     if (targetPoints.length === 0) {
-        for (let i = 0; i < pointsBase.length; i++) targetPoints.push([Math.random() * 500, Math.random() * 500]);
+        for (let i = 0; i < pointsBase.length; i++) targetPoints.push([Math.random() * width, Math.random() * height]);
     }
 
     const nearestPoints = [];
     const nearestColors = [];
-    for (let i = 0; i < pointsBase.length; i++) {
-        let nearestPoint = [pointsBase[i][0], pointsBase[i][1]];
-        let nearestColor = [0, 0, 0, 0];
-        let nearestDistance = Infinity;
+    const baseLen = pointsBase.length;
+    const targetLen = targetPoints.length;
 
-        for (let j = 0; j < targetPoints.length; j++) {
-            const d = Math.sqrt(Math.pow(targetPoints[j][0] - pointsBase[i][0], 2) + Math.pow(targetPoints[j][1] - pointsBase[i][1], 2));
-            if (d < nearestDistance) {
-                nearestDistance = d;
-                nearestPoint = targetPoints[j];
+    for (let i = 0; i < baseLen; i++) {
+        const bx = pointsBase[i][0];
+        const by = pointsBase[i][1];
 
-                const px = Math.round(targetPoints[j][0]);
-                const py = Math.round(targetPoints[j][1]);
-                const idx = (px + py * imageData.width) * 4;
-                nearestColor = [
-                    imageData.data[idx] / 255,
-                    imageData.data[idx + 1] / 255,
-                    imageData.data[idx + 2] / 255,
-                    imageData.data[idx + 3] / 255
-                ];
+        let nearestIdx = -1;
+        let minSqDist = Infinity;
+
+        for (let j = 0; j < targetLen; j++) {
+            const dx = targetPoints[j][0] - bx;
+            const dy = targetPoints[j][1] - by;
+            const sqDist = dx * dx + dy * dy;
+
+            if (sqDist < minSqDist) {
+                minSqDist = sqDist;
+                nearestIdx = j;
             }
         }
-        nearestPoints.push(nearestPoint[0] - 250, nearestPoint[1] - 250);
-        nearestColors.push(nearestColor[0], nearestColor[1], nearestColor[2], nearestColor[3]);
+
+        if (nearestIdx !== -1) {
+            const target = targetPoints[nearestIdx];
+            nearestPoints.push(target[0] - halfW, target[1] - halfH);
+
+            const px = Math.round(target[0]);
+            const py = Math.round(target[1]);
+            const idx = (px + py * imageData.width) * 4;
+            nearestColors.push(
+                imageData.data[idx] / 255,
+                imageData.data[idx + 1] / 255,
+                imageData.data[idx + 2] / 255,
+                imageData.data[idx + 3] / 255
+            );
+        } else {
+            nearestPoints.push(bx - halfW, by - halfH);
+            nearestColors.push(0, 0, 0, 0);
+        }
     }
 
     self.postMessage({ nearestPoints, nearestColors });

@@ -63,21 +63,26 @@ class ParticleManager {
         this.colorScheme = parent.theme === "dark" ? 0 : 1;
         this.particleScale = this.renderer.domElement.width / parent.pixelRatio / 2000 * parent.particlesScale;
 
+        // Single worker instance for all processing
+        this.worker = new ParticleWorker();
+
         this.initBase();
     }
 
     initBase() {
         const linearMap = (x, a, b, c, d) => (x - a) * (d - c) / (b - a) + c;
-        let pds = new PoissonDiskSampling({
-            shape: [500, 500],
+        const pds = new PoissonDiskSampling({
+            shape: [this.parent.width, this.parent.height],
             minDistance: linearMap(this.parent.density, 0, 300, 10, 2),
             maxDistance: linearMap(this.parent.density, 0, 300, 11, 3),
-            tries: 20
+            tries: 15
         });
         this.pointsBaseData = pds.fill();
         this.pointsData = [];
+        const halfW = this.parent.width / 2;
+        const halfH = this.parent.height / 2;
         for (let i = 0; i < this.pointsBaseData.length; i++) {
-            this.pointsData.push(this.pointsBaseData[i][0] - 250, this.pointsBaseData[i][1] - 250);
+            this.pointsData.push(this.pointsBaseData[i][0] - halfW, this.pointsBaseData[i][1] - halfH);
         }
         this.count = this.pointsData.length / 2;
 
@@ -166,17 +171,13 @@ class ParticleManager {
     }
 
     createDataTextureColor(data) {
-        const array = (data instanceof Float32Array) ? data : new Float32Array(this.length * 4);
-        if (!(data instanceof Float32Array)) {
-            const count = data.length / 4;
-            for (let i = 0; i < count; i++) {
-                let idx = i * 4;
-                array[idx + 0] = data[idx + 0];
-                array[idx + 1] = data[idx + 1];
-                array[idx + 2] = data[idx + 2];
-                array[idx + 3] = data[idx + 3];
-            }
+        const isFloat = data instanceof Float32Array;
+        const array = isFloat ? data : new Float32Array(this.length * 4);
+
+        if (!isFloat) {
+            array.set(data);
         }
+
         const tex = new THREE.DataTexture(array, this.size, this.size, THREE.RGBAFormat, THREE.FloatType);
         tex.needsUpdate = true;
         return tex;
@@ -185,10 +186,12 @@ class ParticleManager {
     createDataTexturePosition(data) {
         const array = new Float32Array(this.length * 4);
         const count = data.length / 2;
+        const invHalfW = 1 / (this.parent.width / 2);
+        const invHalfH = 1 / (this.parent.height / 2);
         for (let i = 0; i < count; i++) {
             let idx = i * 4;
-            array[idx + 0] = data[i * 2 + 0] * (1 / 250);
-            array[idx + 1] = data[i * 2 + 1] * (1 / 250);
+            array[idx + 0] = data[i * 2 + 0] * invHalfW;
+            array[idx + 1] = data[i * 2 + 1] * invHalfH;
             array[idx + 2] = 0;
             array[idx + 3] = 0;
         }
@@ -212,21 +215,21 @@ class ParticleManager {
 
     async processImage(imageData) {
         return new Promise((resolve) => {
-            const worker = new ParticleWorker();
-            worker.onmessage = (e) => {
-                worker.terminate();
+            this.worker.onmessage = (e) => {
                 const posTex = this.createDataTexturePosition(e.data.nearestPoints);
                 const colorTex = this.createDataTextureColor(e.data.nearestColors);
                 resolve({ posTex, colorTex });
             };
-            worker.postMessage({
+            this.worker.postMessage({
                 imageData: {
                     data: imageData.data,
                     width: imageData.width,
                     height: imageData.height
                 },
                 pointsBase: this.pointsBaseData,
-                density: this.parent.density
+                density: this.parent.density,
+                width: this.parent.width,
+                height: this.parent.height
             }, [imageData.data.buffer]);
         });
     }
@@ -268,6 +271,7 @@ class ParticleManager {
     }
 
     destroy() {
+        this.worker.terminate();
         this.mesh.geometry.dispose();
         this.mesh.material.dispose();
         this.rt1.dispose();
@@ -286,6 +290,8 @@ export class ParticleImage {
         this.container = canvas.parentElement;
         this.options = options;
 
+        this.width = canvas.clientWidth || 500;
+        this.height = canvas.clientHeight || 500;
         this.theme = options.theme || "dark";
         this.particlesScale = options.particlesScale || 0.5;
         this.density = options.density || 150;
@@ -308,8 +314,6 @@ export class ParticleImage {
 
         this.animate = this.animate.bind(this);
         requestAnimationFrame(this.animate);
-
-        window.addEventListener('resize', this.onResize.bind(this));
     }
 
     initThree() {
@@ -352,12 +356,28 @@ export class ParticleImage {
 
             img.onload = () => {
                 const canvas = document.createElement("canvas");
-                canvas.width = 500;
-                canvas.height = 500;
+                canvas.width = this.width;
+                canvas.height = this.height;
                 const ctx = canvas.getContext("2d");
-                ctx.drawImage(img, 0, 0, 500, 500);
 
-                const data = ctx.getImageData(0, 0, 500, 500);
+                // Centering and scaling logic
+                const targetW = this.width;
+                const targetH = this.height;
+                let drawW = img.width;
+                let drawH = img.height;
+
+                const scale = Math.min(targetW / img.width, targetH / img.height);
+                if (scale < 1) {
+                    drawW = img.width * scale;
+                    drawH = img.height * scale;
+                }
+
+                const x = (targetW - drawW) / 2;
+                const y = (targetH - drawH) / 2;
+
+                ctx.drawImage(img, x, y, drawW, drawH);
+
+                const data = ctx.getImageData(0, 0, this.width, this.height);
 
                 // Cleanup canvas internal state and reference
                 canvas.width = 0;
@@ -415,17 +435,7 @@ export class ParticleImage {
         requestAnimationFrame(this.animate);
     }
 
-    onResize() {
-        const width = this.canvas.clientWidth;
-        const height = this.canvas.clientHeight;
-        this.renderer.setSize(width, height);
-        this.camera.aspect = width / height;
-        this.camera.updateProjectionMatrix();
-        this.manager.resize();
-    }
-
     destroy() {
-        window.removeEventListener('resize', this.onResize);
         this.lru.clear();
         this.manager.destroy();
         this.renderer.dispose();
