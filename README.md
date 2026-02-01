@@ -2,7 +2,7 @@
 
 A high-performance 3D particle morphing library built with Three.js. Transform particles into any image (Path, Base64, or SVG) with smooth GPGPU-powered animations.
 
-video.mp4
+https://github.com/user-attachments/assets/aeac5d4f-d23a-4751-bc38-550211f4c67e
 
 ## Installation
 
