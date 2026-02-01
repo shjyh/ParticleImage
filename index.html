@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParticleImage Library Demo</title>
+    <style>
+        body {
+            margin: 0;
+            background: #ffffff;
+            color: #121212;
+            font-family: sans-serif;
+            overflow: hidden;
+        }
+
+        canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        button {
+            padding: 12px 24px;
+            background: rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+            border-radius: 8px;
+        }
+
+        button:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="particle-canvas"></canvas>
+
+    <div class="controls">
+        <button id="btn-leaf">Morph to Leaf</button>
+        <button id="btn-dw">Morph to DW</button>
+        <button id="btn-scatter">Scatter</button>
+    </div>
+
+    <script type="module">
+        import { ParticleImage } from './src/ParticleImage.js';
+
+        const canvas = document.getElementById('particle-canvas');
+        const effect = new ParticleImage(canvas, {
+            theme: 'light',
+            particlesScale: 0.6,
+            density: 200
+        });
+
+        document.getElementById('btn-leaf').onclick = () => effect.render('./demo_image/leaf.png');
+        document.getElementById('btn-dw').onclick = () => effect.render('./demo_image/dw.png');
+        document.getElementById('btn-scatter').onclick = () => effect.scatter();
+    </script>
+</body>
+
+</html>

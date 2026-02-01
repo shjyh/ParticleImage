@@ -1,0 +1,31 @@
+{
+  "name": "particle-image",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Particle image effect using three.js",
+  "author": "",
+  "license": "MIT",
+  "main": "dist/particle-image.es.js",
+  "module": "dist/particle-image.es.js",
+  "exports": {
+    ".": {
+      "import": "./dist/particle-image.es.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "gsap": "^3.14.2",
+    "poisson-disk-sampling": "^2.3.1",
+    "three": "^0.182.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.1"
+  }
+}
