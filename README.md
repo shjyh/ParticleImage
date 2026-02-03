@@ -58,6 +58,11 @@ effect.destroy();
 ### `scatter()`
 - **Description**: Resets particles back to their original wandering background state.
 
+### `preload(imageSources)`
+- **Arguments**: `imageSources` (String or Array of Strings: URL path, Base64 data, or raw SVG string).
+- **Returns**: `Promise<void>`
+- **Description**: Pre-processes image data in the background and stores it in the LRU cache. This avoids the heavy computation delay when `render()` is called for the first time. Useful for warming up the cache during idle time or initial load.
+
 ### `destroy()`
 - **Description**: Stops the animation loop and releases all memory and GPU resources used by the instance. Use this when the component is unmounted to prevent memory leaks.
 

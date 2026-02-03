@@ -65,8 +65,23 @@ class ParticleManager {
 
         // Single worker instance for all processing
         this.worker = new ParticleWorker();
+        this.workerCallbacks = new Map();
+        this.workerMessageId = 0;
+        this.worker.onmessage = this.handleWorkerMessage.bind(this);
 
         this.initBase();
+    }
+
+    handleWorkerMessage(e) {
+        const { id, nearestPoints, nearestColors } = e.data;
+        if (this.workerCallbacks.has(id)) {
+            const { resolve } = this.workerCallbacks.get(id);
+            this.workerCallbacks.delete(id);
+
+            const posTex = this.createDataTexturePosition(nearestPoints);
+            const colorTex = this.createDataTextureColor(nearestColors);
+            resolve({ posTex, colorTex });
+        }
     }
 
     initBase() {
@@ -215,12 +230,11 @@ class ParticleManager {
 
     async processImage(imageData) {
         return new Promise((resolve) => {
-            this.worker.onmessage = (e) => {
-                const posTex = this.createDataTexturePosition(e.data.nearestPoints);
-                const colorTex = this.createDataTextureColor(e.data.nearestColors);
-                resolve({ posTex, colorTex });
-            };
+            const id = this.workerMessageId++;
+            this.workerCallbacks.set(id, { resolve });
+
             this.worker.postMessage({
+                id,
                 imageData: {
                     data: imageData.data,
                     width: imageData.width,
@@ -426,6 +440,26 @@ export class ParticleImage {
 
     scatter() {
         gsap.to(this, { progress: 0, duration: this.duration, ease: "power3.inOut" });
+    }
+
+    async preload(images) {
+        if (!Array.isArray(images)) {
+            images = [images];
+        }
+
+        const promises = images.map(async (image) => {
+            if (this.lru.get(image)) return;
+
+            try {
+                const imageData = await this.getImageData(image);
+                const processed = await this.manager.processImage(imageData);
+                this.lru.set(image, processed);
+            } catch (err) {
+                console.error(`Failed to preload image: ${image}`, err);
+            }
+        });
+
+        await Promise.all(promises);
     }
 
     animate() {

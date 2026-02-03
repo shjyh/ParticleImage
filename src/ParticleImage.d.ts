@@ -67,6 +67,14 @@ export class ParticleImage {
     scatter(): void;
 
     /**
+     * Pre-processes one or more images in the background and caches the results.
+     * This reduces the delay during the first call to render() for these images.
+     * @param imageSources A single image source or an array of image sources (URL, Base64, or SVG).
+     * @returns A promise that resolves when all images have been processed and cached.
+     */
+    preload(imageSources: string | string[]): Promise<void>;
+
+    /**
      * Stops the animation loop and releases all memory and GPU resources.
      */
     destroy(): void;

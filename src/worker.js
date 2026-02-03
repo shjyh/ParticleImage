@@ -1,6 +1,6 @@
 
 self.onmessage = function (e) {
-    const { imageData, pointsBase, density, width, height } = e.data;
+    const { id, imageData, pointsBase, density, width, height } = e.data;
     const halfW = width / 2;
     const halfH = height / 2;
 
@@ -75,5 +75,5 @@ self.onmessage = function (e) {
         }
     }
 
-    self.postMessage({ nearestPoints, nearestColors });
+    self.postMessage({ id, nearestPoints, nearestColors });
 };
